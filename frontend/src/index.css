@@ -1,0 +1,49 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #08101e;
+  --surface:   #0d1a2d;
+  --surface2:  #112038;
+  --border:    #1e3558;
+  --text:      #d0e8ff;
+  --muted:     #6889aa;
+  --cyan:      #00d4ff;
+  --green:     #22c55e;
+  --yellow:    #facc15;
+  --orange:    #f97316;
+  --red:       #ef4444;
+  --font:      "Inter", "Segoe UI", sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.badge-safe     { background: #16532920; color: var(--green);  border: 1px solid #22c55e40; }
+.badge-watch    { background: #71390920; color: var(--yellow); border: 1px solid #facc1540; }
+.badge-warning  { background: #7c280820; color: var(--orange); border: 1px solid #f9731640; }
+.badge-evacuate { background: #7f1d1d20; color: var(--red);    border: 1px solid #ef444440; }
+
+.pulse-red { animation: pulseRed 1s infinite; }
+@keyframes pulseRed {
+  0%, 100% { box-shadow: 0 0 0 0 #ef444450; }
+  50%       { box-shadow: 0 0 0 8px #ef444400; }
+}
