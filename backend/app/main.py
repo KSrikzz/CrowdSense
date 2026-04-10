@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 import tempfile
 
 import app.detector as _det_module
-from app.detector           import detect_people, generate_heatmap, get_zone_counts, compute_optical_flow, reset_optical_flow
+from app.detector           import detect_people, generate_heatmap, get_zone_counts, compute_optical_flow, compute_crowd_alert, reset_optical_flow
 from app.predictor          import record_zone, forecast_zone, reset_forecast_history
 from app.stampede_predictor import get_all_risks, get_officer_alerts, reset_density_history
 from app.alerting           import process_alerts, get_alert_history, get_alert_stats, reset_alerts
@@ -148,6 +148,7 @@ async def websocket_stream(ws: WebSocket):
             annotated, centers = detect_people(frame.copy(), frame_count)
             heatmap_frame      = generate_heatmap(annotated.copy(), centers)
             zone_counts        = get_zone_counts(frame, centers)
+            crowd_alert_data   = compute_crowd_alert(zone_counts)
 
             # Stage 2: Optical flow (every 2nd frame)
             avg_speed, conflict = 0.0, 0.0
@@ -189,6 +190,9 @@ async def websocket_stream(ws: WebSocket):
                 "new_alerts":       new_alerts,
                 "highest_risk":     all_risks[0] if all_risks else None,
                 "alert_stats":      get_alert_stats(),
+                "crowd_alert":      crowd_alert_data["alert"],
+                "smoothed_total":   crowd_alert_data["smoothed_total"],
+                "zones_smoothed":   crowd_alert_data["zones_smoothed"],
                 "cam_mode":         _det_module._detector.mode,
                 "sahi_enabled":     _det_module._detector._sahi_model is not None,
                 "frame_number":     frame_count,
