@@ -2,10 +2,10 @@ import { useState, useRef } from "react";
 
 const API_BASE = "http://localhost:8000";
 
-export default function SourceControls({ onSourceReady, connected }) {
-  const [uploading, setUploading]   = useState(false);
-  const [status, setStatus]         = useState(null); // { type: 'success'|'error', msg }
-  const [activeSource, setActiveSource] = useState(null); // 'webcam' | 'video'
+export default function SourceControls({ onSourceReady, onStop, connected }) {
+  const [uploading, setUploading]       = useState(false);
+  const [status, setStatus]             = useState(null);
+  const [activeSource, setActiveSource] = useState(null);
   const fileRef = useRef(null);
 
   /* ── Upload a video file ── */
@@ -59,61 +59,17 @@ export default function SourceControls({ onSourceReady, connected }) {
   const handleStop = async () => {
     try {
       await fetch(`${API_BASE}/stop`, { method: "POST" });
-      setStatus({ type: "success", msg: "⏹ Stream stopped" });
+      setStatus({ type: "success", msg: "⏹ Stream stopped — all state reset" });
       setActiveSource(null);
+      onStop?.();
     } catch (err) {
       setStatus({ type: "error", msg: `❌ ${err.message}` });
     }
   };
 
-  /* ── Styles ── */
-  const btnBase = {
-    border: "none",
-    borderRadius: "8px",
-    padding: "10px 18px",
-    fontSize: "13px",
-    fontWeight: "700",
-    cursor: "pointer",
-    letterSpacing: "0.5px",
-    transition: "all 0.25s ease",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-  };
-
-  const btnUpload = {
-    ...btnBase,
-    background: "linear-gradient(135deg, #0066ff 0%, #0044cc 100%)",
-    color: "#fff",
-    boxShadow: "0 2px 12px rgba(0,102,255,0.25)",
-  };
-
-  const btnWebcam = {
-    ...btnBase,
-    background: activeSource === "webcam"
-      ? "linear-gradient(135deg, #00cc66 0%, #009944 100%)"
-      : "linear-gradient(135deg, #00aa55 0%, #007733 100%)",
-    color: "#fff",
-    boxShadow: activeSource === "webcam"
-      ? "0 2px 12px rgba(0,204,102,0.35)"
-      : "0 2px 12px rgba(0,170,85,0.2)",
-  };
-
-  const btnStop = {
-    ...btnBase,
-    background: "linear-gradient(135deg, #cc2222 0%, #991111 100%)",
-    color: "#fff",
-    boxShadow: "0 2px 12px rgba(204,34,34,0.2)",
-  };
-
-  const btnFile = {
-    ...btnBase,
-    background: "transparent",
-    color: "#5577aa",
-    border: "1px dashed #2a3a5a",
-    cursor: "pointer",
-    position: "relative",
-    overflow: "hidden",
+  /* ── Click the hidden file input programmatically ── */
+  const triggerFileSelect = () => {
+    fileRef.current?.click();
   };
 
   return (
@@ -126,20 +82,14 @@ export default function SourceControls({ onSourceReady, connected }) {
     }}>
       {/* ── Header ── */}
       <div style={{
-        fontSize: "12px",
-        color: "#5577aa",
-        marginBottom: "12px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
+        fontSize: "12px", color: "#5577aa", marginBottom: "12px",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
         <span>🎬 Video Source Controls</span>
         {activeSource && (
           <span style={{
-            fontSize: "10px",
-            fontWeight: 700,
-            padding: "2px 10px",
-            borderRadius: "999px",
+            fontSize: "10px", fontWeight: 700,
+            padding: "2px 10px", borderRadius: "999px",
             background: activeSource === "webcam" ? "#00aa5520" : "#0066ff20",
             color: activeSource === "webcam" ? "#00ff88" : "#00aaff",
             border: `1px solid ${activeSource === "webcam" ? "#00aa5540" : "#0066ff40"}`,
@@ -150,59 +100,93 @@ export default function SourceControls({ onSourceReady, connected }) {
         )}
       </div>
 
+      {/* ── Hidden file input ── */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="video/*,.mp4,.avi,.mov,.mkv"
+        onChange={handleUpload}
+        style={{ display: "none" }}
+      />
+
       {/* ── Actions Row ── */}
       <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-        {/* Upload Video Button */}
-        <label style={{ ...btnFile, ...(uploading ? { opacity: 0.5, pointerEvents: "none" } : {}) }}>
+        {/* Upload Video */}
+        <button
+          onClick={triggerFileSelect}
+          disabled={uploading}
+          style={{
+            border: "1px dashed #2a3a5a",
+            borderRadius: "8px",
+            padding: "10px 18px",
+            fontSize: "13px",
+            fontWeight: "700",
+            cursor: uploading ? "not-allowed" : "pointer",
+            letterSpacing: "0.5px",
+            transition: "all 0.25s ease",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            background: "transparent",
+            color: "#5577aa",
+            opacity: uploading ? 0.5 : 1,
+          }}
+        >
           <span>📁</span>
           <span>{uploading ? "Uploading..." : "Upload Video"}</span>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="video/*"
-            onChange={handleUpload}
-            style={{
-              position: "absolute",
-              top: 0, left: 0,
-              width: "100%", height: "100%",
-              opacity: 0,
-              cursor: "pointer",
-            }}
-          />
-        </label>
+        </button>
 
-        {/* Webcam Button */}
-        <button onClick={handleWebcam} style={btnWebcam}>
+        {/* Live Webcam */}
+        <button
+          onClick={handleWebcam}
+          style={{
+            border: "none",
+            borderRadius: "8px",
+            padding: "10px 18px",
+            fontSize: "13px",
+            fontWeight: "700",
+            cursor: "pointer",
+            letterSpacing: "0.5px",
+            transition: "all 0.25s ease",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            background: activeSource === "webcam"
+              ? "linear-gradient(135deg, #00cc66 0%, #009944 100%)"
+              : "linear-gradient(135deg, #00aa55 0%, #007733 100%)",
+            color: "#fff",
+            boxShadow: activeSource === "webcam"
+              ? "0 2px 12px rgba(0,204,102,0.35)"
+              : "0 2px 12px rgba(0,170,85,0.2)",
+          }}
+        >
           <span>📷</span>
           <span>Live Webcam</span>
         </button>
 
-        {/* Stop Button */}
-        <button onClick={handleStop} style={btnStop}>
+        {/* Stop */}
+        <button
+          onClick={handleStop}
+          style={{
+            border: "none",
+            borderRadius: "8px",
+            padding: "10px 18px",
+            fontSize: "13px",
+            fontWeight: "700",
+            cursor: "pointer",
+            letterSpacing: "0.5px",
+            transition: "all 0.25s ease",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            background: "linear-gradient(135deg, #cc2222 0%, #991111 100%)",
+            color: "#fff",
+            boxShadow: "0 2px 12px rgba(204,34,34,0.2)",
+          }}
+        >
           <span>⏹</span>
           <span>Stop</span>
         </button>
-
-        {/* Divider */}
-        <div style={{ width: "1px", height: "28px", background: "#1e2a4a", margin: "0 4px" }} />
-
-        {/* Direct upload (.mp4) */}
-        <label style={btnUpload}>
-          <span>🎞️</span>
-          <span>{uploading ? "Uploading…" : "Quick Upload .mp4"}</span>
-          <input
-            type="file"
-            accept=".mp4,.avi,.mov,.mkv"
-            onChange={handleUpload}
-            style={{
-              position: "absolute",
-              top: 0, left: 0,
-              width: "100%", height: "100%",
-              opacity: 0,
-              cursor: "pointer",
-            }}
-          />
-        </label>
       </div>
 
       {/* ── Status Message ── */}

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 
 export default function AlertPanel({ alerts }) {
   const [log, setLog] = useState([]);
-  const bottomRef = useRef(null);
+  const scrollRef = useRef(null);
 
   useEffect(() => {
     if (alerts.length > 0) {
@@ -18,7 +18,9 @@ export default function AlertPanel({ alerts }) {
   }, [alerts]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior:"smooth" });
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [log]);
 
   const colorMap = {
@@ -46,7 +48,7 @@ export default function AlertPanel({ alerts }) {
         </span>
       </div>
 
-      <div style={{ height:"280px", overflowY:"auto", display:"flex",
+      <div ref={scrollRef} style={{ height:"280px", overflowY:"auto", display:"flex",
                     flexDirection:"column", gap:"6px" }}>
         {log.length === 0 ? (
           <div style={{ textAlign:"center", color:"#2a3a5a", marginTop:"60px", fontSize:"13px" }}>
@@ -77,7 +79,7 @@ export default function AlertPanel({ alerts }) {
             </div>
           ))
         )}
-        <div ref={bottomRef} />
+
       </div>
 
       <style>{`

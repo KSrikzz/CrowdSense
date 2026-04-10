@@ -73,12 +73,39 @@ export default function App() {
     setZoneRisks([]);
     setAlerts([]);
     setHighestRisk(null);
+    setFlowConflict(0);
+    setAvgSpeed(0);
 
     // Small delay to let the backend register the source, then reconnect WS
     setTimeout(() => {
       connect();
     }, 500);
   }, [connect]);
+
+  /* ── Called when user clicks Stop — full reset to original state ── */
+  const handleStop = useCallback(() => {
+    // Close WebSocket
+    if (wsRef.current) {
+      wsRef.current.onclose = null;
+      wsRef.current.onerror = null;
+      wsRef.current.onmessage = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    // Reset ALL state to initial values
+    setConnected(false);
+    setFrame(null);
+    setTotalPeople(0);
+    setZoneRisks([]);
+    setAlerts([]);
+    setHighestRisk(null);
+    setFlowConflict(0);
+    setAvgSpeed(0);
+    setDensityLog([]);
+    setFrameNo(0);
+    setSourceReady(false);
+  }, []);
 
   const bgColor = highestRisk
     ? { SAFE: "#0a0e1e", WATCH: "#1a1500", WARNING: "#1a0a00", EVACUATE: "#1a0000" }
@@ -110,7 +137,7 @@ export default function App() {
       </header>
 
       {/* ── Source Controls (Upload / Webcam / Stop) ── */}
-      <SourceControls onSourceReady={handleSourceReady} connected={connected} />
+      <SourceControls onSourceReady={handleSourceReady} onStop={handleStop} connected={connected} />
 
       {/* ── Stats Bar ── */}
       <StatsBar
