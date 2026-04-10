@@ -1,0 +1,41 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# YOLO model weights (too large for GitHub)
+*.pt
+*.pth
+*.weights
+
+# Uploaded videos (user uploads, not code)
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# Environment variables / secrets
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
