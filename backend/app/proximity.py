@@ -1,12 +1,12 @@
 import math
 from collections import defaultdict
 
-CLOSE_THRESHOLD    = 1.0
-DWELL_MIN_FRAMES   = 8
+CLOSE_THRESHOLD    = 1.5
+DWELL_MIN_FRAMES   = 4 
 GRID_ROWS          = 3
 GRID_COLS          = 3
-MIN_SECTION_PEOPLE = 2
-JAM_RATIO          = 0.5
+MIN_SECTION_PEOPLE = 3    
+JAM_RATIO          = 0.65  
 
 RISK_FROM_JAMMED   = {0: "SAFE", 1: "WATCH", 2: "WARNING", 3: "EVACUATE"}
 
@@ -56,9 +56,11 @@ def compute_proximity(ground_anchors: list, boxes: list,
     global _dwell_counters, _jammed_dwell
 
     n = len(ground_anchors)
-    if n < 2:
-        _dwell_counters.clear()
-        _jammed_dwell.clear()
+    if n < MIN_SECTION_PEOPLE:
+        for p in list(_dwell_counters.keys()):
+            _dwell_counters[p] = max(0, _dwell_counters[p] - 2)
+            if _dwell_counters[p] == 0:
+                del _dwell_counters[p]
         return _empty_result(n)
 
     heights = [max(1, abs(b[4]-b[2])) if len(b) >= 5 else 50 for b in boxes]
@@ -71,42 +73,55 @@ def compute_proximity(ground_anchors: list, boxes: list,
         for j in range(i+1, n):
             if _norm_distance(ground_anchors[i], ground_anchors[j],
                               heights[i], heights[j]) < CLOSE_THRESHOLD:
-                current_close.add((i,j))
+                current_close.add((i, j))
 
-    # Step 2: Dwell counters
-    _dwell_counters = {p: _dwell_counters.get(p,0)+1 for p in current_close}
-    confirmed_pairs = {p for p,d in _dwell_counters.items() if d >= DWELL_MIN_FRAMES}
+    # Step 2: Dwell counters — increment active, decay stale
+    for p in current_close:
+        _dwell_counters[p] = _dwell_counters.get(p, 0) + 1
+    for p in list(_dwell_counters.keys()):
+        if p not in current_close:
+            _dwell_counters[p] = max(0, _dwell_counters[p] - 1)
+            if _dwell_counters[p] == 0:
+                del _dwell_counters[p]
+
+    confirmed_pairs = {p for p, d in _dwell_counters.items() if d >= DWELL_MIN_FRAMES}
     violating_ids   = {idx for pair in confirmed_pairs for idx in pair}
 
     # Step 3: Section map
     section_people = defaultdict(set)
     for idx, anchor in enumerate(ground_anchors):
         section_people[_get_section(anchor, frame_w, frame_h)].add(idx)
-    section_counts = {s: len(ids) for s,ids in section_people.items()}
+    section_counts = {s: len(ids) for s, ids in section_people.items()}
 
-    # Step 4: Jam detection — packed + no empty neighbor = jammed
+    # Step 4: Jam detection
     candidate_jammed = []
     for sec, ids in section_people.items():
         if len(ids) < MIN_SECTION_PEOPLE:
             continue
-        close_in   = sum(1 for idx in ids if idx in violating_ids)
+        close_in = sum(1 for idx in ids if idx in violating_ids)
         if (close_in / len(ids)) < JAM_RATIO:
             continue
-        has_escape = any(section_counts.get(nb,0) == 0 for nb in _neighbors(sec))
+        # Escape = any neighbour with fewer than MIN_SECTION_PEOPLE people
+        # (was: ==0, too strict — safe crowds always have 1-2 per section)
+        has_escape = any(
+            section_counts.get(nb, 0) < MIN_SECTION_PEOPLE
+            for nb in _neighbors(sec)
+        )
         if not has_escape:
             candidate_jammed.append(sec)
 
-    # Step 5: Jammed section dwell filter
-    _jammed_dwell = {s: _jammed_dwell.get(s,0)+1 for s in candidate_jammed}
+    # Step 5: Jammed section dwell — increment active, decay stale
+    for s in candidate_jammed:
+        _jammed_dwell[s] = _jammed_dwell.get(s, 0) + 1
     for s in list(_jammed_dwell.keys()):
         if s not in candidate_jammed:
-            _jammed_dwell[s] = max(0, _jammed_dwell[s]-2)
+            _jammed_dwell[s] = max(0, _jammed_dwell[s] - 2)
             if _jammed_dwell[s] == 0:
                 del _jammed_dwell[s]
 
-    confirmed_jammed = [s for s,d in _jammed_dwell.items() if d >= DWELL_MIN_FRAMES]
+    confirmed_jammed = [s for s, d in _jammed_dwell.items() if d >= DWELL_MIN_FRAMES]
     jammed_count     = len(confirmed_jammed)
-    risk_level       = RISK_FROM_JAMMED.get(min(jammed_count,3), "EVACUATE")
+    risk_level       = RISK_FROM_JAMMED.get(min(jammed_count, 3), "EVACUATE")
     max_dwell        = max(_jammed_dwell.values(), default=0)
 
     return {
