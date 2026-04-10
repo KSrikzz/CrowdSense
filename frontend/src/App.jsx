@@ -20,6 +20,7 @@ export default function App() {
   const [densityLog,   setDensityLog]   = useState([]);
   const [frameNo,      setFrameNo]      = useState(0);
   const [sourceReady,  setSourceReady]  = useState(false);
+  const [wsData, setWsData] = useState(null);
   const wsRef = useRef(null);
 
   /* ── WebSocket connect / reconnect ── */
@@ -41,6 +42,7 @@ export default function App() {
       const data = JSON.parse(e.data);
       if (data.error) { console.error(data.error); return; }
 
+      setWsData(data);
       setFrame(data.frame);
       setTotalPeople(data.total_people   || 0);
       setZoneRisks(data.stampede_risks   || []);
@@ -141,11 +143,10 @@ export default function App() {
 
       {/* ── Stats Bar ── */}
       <StatsBar
-        totalPeople={totalPeople}
-        flowConflict={flowConflict}
-        avgSpeed={avgSpeed}
-        highestRisk={highestRisk}
-        alertCount={alerts.length}
+        totalPeople={wsData?.total_people      ?? 0}
+        highestRisk={wsData?.highest_risk      ?? null}
+        violating={wsData?.violating_people    ?? 0}
+        jammedSections={wsData?.jammed_sections ?? 0}
       />
 
       {/* ── Main Grid ── */}

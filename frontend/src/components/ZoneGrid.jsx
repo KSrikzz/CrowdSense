@@ -1,68 +1,55 @@
-export default function ZoneGrid({ zoneRisks }) {
-  const colorMap = {
-    SAFE:     { bg:"#002a1a", border:"#00aa55", text:"#00ff88" },
-    WATCH:    { bg:"#2a2000", border:"#ccaa00", text:"#ffd200" },
-    WARNING:  { bg:"#2a1000", border:"#cc6600", text:"#ff8800" },
-    EVACUATE: { bg:"#2a0000", border:"#cc0000", text:"#ff2222" },
-  };
+const LEVEL_STYLES = {
+  SAFE:     { bg:"#001a0d", border:"#00aa5540", color:"#00ff88", label:"✅ SAFE"     },
+  WATCH:    { bg:"#1a1500", border:"#ccaa0040", color:"#ffcc00", label:"👁 WATCH"    },
+  WARNING:  { bg:"#1a0a00", border:"#ff660040", color:"#ff8800", label:"⚠️ WARNING"  },
+  EVACUATE: { bg:"#1a0000", border:"#ff000060", color:"#ff3333", label:"🚨 EVACUATE" },
+};
 
-  // Sort by zone label so grid stays stable
-  const sorted = [...zoneRisks].sort((a, b) => a.zone.localeCompare(b.zone));
+function Stat({ label, value, color = "#00dcff" }) {
+  return (
+    <div style={{
+      background:"#0a0e1e", borderRadius:"8px",
+      padding:"10px 14px", border:"1px solid #1e2a4a",
+      display:"flex", justifyContent:"space-between", alignItems:"center",
+    }}>
+      <span style={{ fontSize:"11px", color:"#5577aa" }}>{label}</span>
+      <span style={{ fontSize:"18px", fontWeight:800, color }}>{value}</span>
+    </div>
+  );
+}
+
+export default function ZoneGrid({ zoneRisks }) {
+  const risk   = zoneRisks?.[0]   ?? null;
+  const level  = risk?.risk_level ?? "SAFE";
+  const s      = LEVEL_STYLES[level] ?? LEVEL_STYLES.SAFE;
+  const jammed = risk?.jammed_sections  ?? 0;
+  const atRisk = risk?.violating_people ?? 0;
+  const dwell  = risk?.dwell_frames     ?? 0;
 
   return (
-    <div style={{ background:"#0f1629", border:"1px solid #1e2a4a",
-                  borderRadius:"10px", padding:"12px" }}>
-      <div style={{ fontSize:"12px", color:"#5577aa", marginBottom:"10px",
-                    display:"flex", justifyContent:"space-between" }}>
-        <span>📦 Zone Risk Grid (3×3)</span>
-        <span style={{ color:"#2a3a5a" }}>live</span>
+    <div style={{
+      background:"#0f1629", border:"1px solid #1e2a4a",
+      borderRadius:"10px", padding:"16px",
+    }}>
+      <div style={{
+        background:s.bg, border:`2px solid ${s.border}`,
+        borderRadius:"10px", padding:"18px",
+        textAlign:"center", marginBottom:"12px",
+        transition:"all 0.4s ease",
+      }}>
+        <div style={{ fontSize:"28px", fontWeight:900, color:s.color, letterSpacing:"2px" }}>
+          {s.label}
+        </div>
+        <div style={{ fontSize:"11px", color:"#5577aa", marginTop:"5px" }}>
+          {level === "SAFE"
+            ? "No jammed zones detected"
+            : `${jammed} zone${jammed > 1 ? "s" : ""} fully jammed — no escape space`}
+        </div>
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:"6px" }}>
-        {sorted.map((z) => {
-          const c  = colorMap[z.risk_level] || colorMap.SAFE;
-          const pct = z.risk_score / 100;
-          return (
-            <div key={z.zone}
-              style={{ background: c.bg, border:`1.5px solid ${c.border}`,
-                       borderRadius:"8px", padding:"8px", textAlign:"center",
-                       transition:"all 0.4s" }}>
-              {/* Zone label */}
-              <div style={{ fontSize:"11px", color:"#5577aa", marginBottom:"3px" }}>
-                {z.zone}
-              </div>
-              {/* Risk score */}
-              <div style={{ fontSize:"20px", fontWeight:"800", color: c.text }}>
-                {z.risk_score.toFixed(0)}
-              </div>
-              {/* Progress bar */}
-              <div style={{ height:"4px", background:"#1e2a4a", borderRadius:"2px",
-                            marginTop:"5px", overflow:"hidden" }}>
-                <div style={{ width:`${pct * 100}%`, height:"100%",
-                              background: c.border, transition:"width 0.4s",
-                              borderRadius:"2px" }} />
-              </div>
-              {/* Level badge */}
-              <div style={{ fontSize:"9px", color: c.text, marginTop:"4px",
-                            fontWeight:"700", letterSpacing:"0.5px" }}>
-                {z.risk_level}
-              </div>
-              {/* Person count */}
-              <div style={{ fontSize:"10px", color:"#4a5a7a", marginTop:"2px" }}>
-                👥 {z.person_count}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Legend */}
-      <div style={{ display:"flex", gap:"8px", marginTop:"10px", flexWrap:"wrap" }}>
-        {[["SAFE","#00ff88"],["WATCH","#ffd200"],["WARNING","#ff8800"],["EVACUATE","#ff2222"]].map(([l,c]) => (
-          <div key={l} style={{ display:"flex", alignItems:"center", gap:"4px", fontSize:"10px" }}>
-            <div style={{ width:8, height:8, borderRadius:"50%", background:c }} />
-            <span style={{ color:"#5577aa" }}>{l}</span>
-          </div>
-        ))}
+      <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
+        <Stat label="🔴 Jammed Zones"   value={`${jammed} / 9`} color={jammed > 0 ? s.color : "#00ff88"} />
+        <Stat label="⚠️ People at Risk" value={atRisk}           color={atRisk > 0 ? "#ff8800" : "#00ff88"} />
+        <Stat label="⏱ Dwell Duration"  value={`${dwell} frames`} color={dwell >= 10 ? "#ff4444" : "#ffcc00"} />
       </div>
     </div>
   );
