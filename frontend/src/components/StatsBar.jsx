@@ -27,6 +27,9 @@ export default function StatsBar({
   const color = RISK_COLORS[level]      || "#00ff88";
   const isBad = level === "WARNING" || level === "EVACUATE";
 
+  // Only show violating count when risk is not SAFE
+  const displayViolating = level === "SAFE" ? 0 : violating;
+
   return (
     <>
       <style>{`
@@ -36,10 +39,10 @@ export default function StatsBar({
         }
       `}</style>
       <div style={{ display:"flex", gap:"10px", marginTop:"12px", flexWrap:"wrap" }}>
-        <Card label="👥 PEOPLE DETECTED" value={totalPeople}            color="#00dcff" />
-        <Card label="⚠️ PEOPLE AT RISK"  value={violating}              color={violating > 0 ? "#ff8800" : "#00ff88"} />
-        <Card label="🔴 JAMMED ZONES"    value={`${jammedSections}/9`}  color={jammedSections > 0 ? color : "#00ff88"} />
-        <Card label="🚨 RISK LEVEL"      value={level}                  color={color} pulse={isBad} />
+        <Card label="👥 PEOPLE DETECTED" value={totalPeople}                color="#00dcff" />
+        <Card label="⚠️ PEOPLE AT RISK"  value={displayViolating}           color={displayViolating > 0 ? "#ff8800" : "#00ff88"} />
+        <Card label="🔴 JAMMED ZONES"    value={`${jammedSections}/9`}      color={jammedSections > 0 ? color : "#00ff88"} />
+        <Card label="🚨 RISK LEVEL"      value={level}                      color={color} pulse={isBad} />
       </div>
     </>
   );

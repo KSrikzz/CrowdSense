@@ -1,12 +1,12 @@
 import math
 from collections import defaultdict
 
-CLOSE_THRESHOLD    = 1.5
-DWELL_MIN_FRAMES   = 4 
+CLOSE_THRESHOLD    = 0.8   # was 1.5 — only flag truly packed crowds (< 0.8× avg height apart)
+DWELL_MIN_FRAMES   = 12    # was 4  — must stay close for 12 frames (~0.4s) to count
 GRID_ROWS          = 3
 GRID_COLS          = 3
-MIN_SECTION_PEOPLE = 3    
-JAM_RATIO          = 0.65  
+MIN_SECTION_PEOPLE = 3
+JAM_RATIO          = 0.65
 
 RISK_FROM_JAMMED   = {0: "SAFE", 1: "WATCH", 2: "WARNING", 3: "EVACUATE"}
 
@@ -75,7 +75,7 @@ def compute_proximity(ground_anchors: list, boxes: list,
                               heights[i], heights[j]) < CLOSE_THRESHOLD:
                 current_close.add((i, j))
 
-    # Step 2: Dwell counters — increment active, decay stale
+    # Step 2: Dwell counters
     for p in current_close:
         _dwell_counters[p] = _dwell_counters.get(p, 0) + 1
     for p in list(_dwell_counters.keys()):
@@ -101,8 +101,6 @@ def compute_proximity(ground_anchors: list, boxes: list,
         close_in = sum(1 for idx in ids if idx in violating_ids)
         if (close_in / len(ids)) < JAM_RATIO:
             continue
-        # Escape = any neighbour with fewer than MIN_SECTION_PEOPLE people
-        # (was: ==0, too strict — safe crowds always have 1-2 per section)
         has_escape = any(
             section_counts.get(nb, 0) < MIN_SECTION_PEOPLE
             for nb in _neighbors(sec)
@@ -110,7 +108,7 @@ def compute_proximity(ground_anchors: list, boxes: list,
         if not has_escape:
             candidate_jammed.append(sec)
 
-    # Step 5: Jammed section dwell — increment active, decay stale
+    # Step 5: Jammed section dwell
     for s in candidate_jammed:
         _jammed_dwell[s] = _jammed_dwell.get(s, 0) + 1
     for s in list(_jammed_dwell.keys()):
