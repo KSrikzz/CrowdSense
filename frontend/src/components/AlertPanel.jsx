@@ -21,16 +21,18 @@ const LEVEL_ICON = {
 export default function AlertPanel({ alerts }) {
   const [log, setLog]               = useState([]);
   const [isClearing, setIsClearing] = useState(false);
-  const lastLevelRef                = useRef(null);
   const clearTimerRef               = useRef(null);
   const scrollRef                   = useRef(null);
 
-  useEffect(() => {
-    const active = (alerts || []).filter(a => a.level && a.level !== "SAFE");
+  // Derive active alerts directly from prop — source of truth
+  const active      = (alerts || []).filter(a => a.level && a.level !== "SAFE");
+  const activeCount = active.length;
+  const activeLevel = active[0]?.level ?? null;
 
-    if (active.length === 0) {
-      lastLevelRef.current = null;
-      if (log.length > 0) {
+  useEffect(() => {
+    if (activeCount === 0) {
+      // Gone safe — show clearing banner briefly, then wipe log
+      if (log.length > 0 && !isClearing) {
         setIsClearing(true);
         clearTimerRef.current = setTimeout(() => {
           setLog([]);
@@ -40,26 +42,33 @@ export default function AlertPanel({ alerts }) {
       return;
     }
 
+    // Cancel any pending clear
     if (clearTimerRef.current) {
       clearTimeout(clearTimerRef.current);
       clearTimerRef.current = null;
       setIsClearing(false);
     }
 
+    // Always sync log to reflect current active alerts live
     const topAlert = active[0];
-    if (topAlert.level === lastLevelRef.current) return;
-    lastLevelRef.current = topAlert.level;
-
     const entry = {
-      id:      `${topAlert.zone}-${Date.now()}`,
+      id:      `${topAlert.zone}-${topAlert.level}-${Date.now()}`,
       level:   topAlert.level,
       zone:    topAlert.zone    || "FULL_FRAME",
       message: topAlert.message || "",
       count:   topAlert.count   || 0,
+      dwell:   topAlert.dwell   || 0,
       time:    new Date().toLocaleTimeString(),
     };
 
-    setLog(prev => [entry, ...prev].slice(0, 50));
+    setLog(prev => {
+      // Replace the top entry if it's the same level+zone (live update),
+      // or prepend a new entry if level/zone changed
+      if (prev.length > 0 && prev[0].level === entry.level && prev[0].zone === entry.zone) {
+        return [{ ...prev[0], count: entry.count, dwell: entry.dwell }, ...prev.slice(1)];
+      }
+      return [entry, ...prev].slice(0, 50);
+    });
   }, [alerts]);
 
   useEffect(() => () => clearTimeout(clearTimerRef.current), []);
@@ -68,17 +77,13 @@ export default function AlertPanel({ alerts }) {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [log]);
 
-  const activeLevel = (alerts || []).find(a => a.level && a.level !== "SAFE")?.level ?? null;
-  const activeCount = (alerts || []).filter(a => a.level && a.level !== "SAFE").length;
   const borderColor = activeLevel
     ? LEVEL_COLOR[activeLevel]
     : isClearing ? "#00ff88" : "#1e2a4a";
 
-  // ── What to show inside the log area ──────────────────────────
-  // Priority: active entries > clearing banner > empty state
-  const showEntries  = activeCount > 0;          // alerts firing right now
-  const showClearing = !showEntries && isClearing; // just went safe, 2.5s banner
-  const showEmpty    = !showEntries && !isClearing && log.length === 0; // truly idle
+  const showEntries  = activeCount > 0;
+  const showClearing = !showEntries && isClearing;
+  const showEmpty    = !showEntries && !isClearing && log.length === 0;
 
   return (
     <div style={{
@@ -90,7 +95,7 @@ export default function AlertPanel({ alerts }) {
       transition:   "border-color 0.6s ease",
     }}>
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div style={{
         fontSize:       "12px",
         color:          "#5577aa",
@@ -114,7 +119,7 @@ export default function AlertPanel({ alerts }) {
         </span>
       </div>
 
-      {/* ── Log area ── */}
+      {/* Log area */}
       <div
         ref={scrollRef}
         style={{
@@ -125,7 +130,7 @@ export default function AlertPanel({ alerts }) {
           gap:           "6px",
         }}
       >
-        {/* CASE 1: active alerts — show log entries only */}
+        {/* CASE 1: active alerts */}
         {showEntries && log.map((a) => (
           <div
             key={a.id}
@@ -165,14 +170,18 @@ export default function AlertPanel({ alerts }) {
               gap:       "10px",
               color:     "#4a5a7a",
               fontSize:  "10px",
+              flexWrap:  "wrap",
             }}>
               <span>📍 {a.zone.replace(/_/g, " ")}</span>
               <span>👥 {a.count} people</span>
+              {a.dwell > 0 && (
+                <span>⏱ Jammed {(a.dwell / 30).toFixed(1)}s</span>
+              )}
             </div>
           </div>
         ))}
 
-        {/* CASE 2: just cleared — green banner for 2.5s, no old entries */}
+        {/* CASE 2: just cleared */}
         {showClearing && (
           <div style={{
             background:   "#001a0a",
@@ -186,12 +195,8 @@ export default function AlertPanel({ alerts }) {
           }}>
             <span style={{ fontSize: "18px" }}>✅</span>
             <div>
-              <div style={{ color: "#00ff88", fontWeight: "700", fontSize: "12px" }}>
-                AREA CLEARED
-              </div>
-              <div style={{ color: "#4a8a6a", fontSize: "10px", marginTop: "2px" }}>
-                All zones returned to safe levels
-              </div>
+              <div style={{ color: "#00ff88", fontWeight: "700", fontSize: "12px" }}>AREA CLEARED</div>
+              <div style={{ color: "#4a8a6a", fontSize: "10px", marginTop: "2px" }}>All zones returned to safe levels</div>
             </div>
             <span style={{ marginLeft: "auto", color: "#2a4a3a", fontSize: "10px" }}>
               {new Date().toLocaleTimeString()}
@@ -199,14 +204,9 @@ export default function AlertPanel({ alerts }) {
           </div>
         )}
 
-        {/* CASE 3: truly idle — no alerts ever or fully reset */}
+        {/* CASE 3: truly idle */}
         {showEmpty && (
-          <div style={{
-            textAlign:  "center",
-            color:      "#2a3a5a",
-            marginTop:  "60px",
-            fontSize:   "13px",
-          }}>
+          <div style={{ textAlign: "center", color: "#2a3a5a", marginTop: "60px", fontSize: "13px" }}>
             <div style={{ fontSize: "28px", marginBottom: "8px" }}>✅</div>
             No alerts — all zones clear
           </div>

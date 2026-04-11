@@ -1,10 +1,23 @@
+const FPS = 30;
+
+function framesToTime(frames) {
+  const secs = frames / FPS;
+  if (secs < 60) return `${secs.toFixed(1)}s`;
+  const m = Math.floor(secs / 60);
+  const s = Math.round(secs % 60);
+  return `${m}m ${s}s`;
+}
+
 export default function RiskPanel({ risks, forecasts }) {
   const levelColor = {
     SAFE: "var(--green)", WATCH: "var(--yellow)",
     WARNING: "var(--orange)", EVACUATE: "var(--red)"
   };
-  const trendIcon = { RISING: "↑", FALLING: "↓", STABLE: "→" };
+  const trendIcon  = { RISING: "↑", FALLING: "↓", STABLE: "→" };
   const trendColor = { RISING: "var(--red)", FALLING: "var(--green)", STABLE: "var(--muted)" };
+
+  // Keys that store frame counts — convert to time strings
+  const FRAME_KEYS = new Set(["dwell_frames", "dwell_score"]);
 
   return (
     <div style={{
@@ -18,9 +31,9 @@ export default function RiskPanel({ risks, forecasts }) {
       </div>
       <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
         {(risks || []).map(r => {
-          const color = levelColor[r.risk_level];
+          const color    = levelColor[r.risk_level];
           const forecast = forecasts?.[r.zone];
-          const trend = forecast?.trend;
+          const trend    = forecast?.trend;
 
           return (
             <div key={r.zone} style={{
@@ -55,14 +68,21 @@ export default function RiskPanel({ risks, forecasts }) {
                 }} />
               </div>
 
-              {/* Factor breakdown */}
+              {/* Factor breakdown — dwell keys converted to time */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "4px 12px" }}>
                 {Object.entries(r.factors).map(([key, val]) => {
-                  const label = key.replace(/_score$/, "").replace(/_/g, " ").toUpperCase();
+                  const label      = key.replace(/_score$/, "").replace(/_/g, " ").toUpperCase();
+                  const isFrameKey = FRAME_KEYS.has(key);
+                  const display    = isFrameKey
+                    ? framesToTime(Number(val))
+                    : val;
+                  const suffix     = isFrameKey ? "" : "";
                   return (
                     <div key={key} style={{ display: "flex", justifyContent: "space-between", fontSize: 10 }}>
-                      <span style={{ color: "var(--muted)" }}>{label}</span>
-                      <span style={{ color: "var(--text)", fontWeight: 700 }}>{val}</span>
+                      <span style={{ color: "var(--muted)" }}>
+                        {isFrameKey ? "⏱ DWELL TIME" : label}
+                      </span>
+                      <span style={{ color: "var(--text)", fontWeight: 700 }}>{display}{suffix}</span>
                     </div>
                   );
                 })}
