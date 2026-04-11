@@ -161,7 +161,7 @@ export default function SourceControls({ onSourceReady, onStop, connected }) {
           }}
         >
           <span>📷</span>
-          <span>Live Webcam</span>
+          <span>Live Feed</span>
         </button>
 
         {/* Stop */}
@@ -218,9 +218,7 @@ export default function SourceControls({ onSourceReady, onStop, connected }) {
           color: "#4a5a7a",
           lineHeight: 1.6,
         }}>
-          <strong style={{ color: "#5577aa" }}>Getting Started:</strong>{" "}
-          Upload a crowd video file or use your webcam for live monitoring.
-          Once a source is set, the WebSocket stream will begin automatically.
+          Upload a crowd video file or use live monitoring.
         </div>
       )}
     </div>

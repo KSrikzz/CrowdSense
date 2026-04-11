@@ -22,7 +22,6 @@ export default function StatsBar({
   totalPeople    = 0,
   violating      = 0,
   jammedSections = 0,
-  dwell          = 0,
 }) {
   const level = highestRisk?.risk_level || "SAFE";
   const color = RISK_COLORS[level]      || "#00ff88";
@@ -40,7 +39,6 @@ export default function StatsBar({
         <Card label="👥 PEOPLE DETECTED" value={totalPeople}            color="#00dcff" />
         <Card label="⚠️ PEOPLE AT RISK"  value={violating}              color={violating > 0 ? "#ff8800" : "#00ff88"} />
         <Card label="🔴 JAMMED ZONES"    value={`${jammedSections}/9`}  color={jammedSections > 0 ? color : "#00ff88"} />
-        <Card label="⏱ DWELL FRAMES"     value={dwell}                  color={dwell >= 10 ? "#ff4444" : "#ffcc00"} />
         <Card label="🚨 RISK LEVEL"      value={level}                  color={color} pulse={isBad} />
       </div>
     </>
